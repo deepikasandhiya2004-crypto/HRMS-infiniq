@@ -8,6 +8,9 @@ import settingsRoutes from './routes/settings.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import meRoutes from './routes/me.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import leaveRoutes from './routes/leave.routes.js';
+import operationsRoutes from './routes/operations.routes.js';
+import configurationRoutes from './routes/configuration.routes.js';
 
 dotenv.config();
 
@@ -24,14 +27,16 @@ app.get('/api/health', async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Database connection failed' });
   }
 });
-app.use('/api/auth', authRoutes);
 
+app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/me', meRoutes);
-
+app.use('/api/leave', leaveRoutes);
+app.use('/api/operations', operationsRoutes);
+app.use('/api/configuration', configurationRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
