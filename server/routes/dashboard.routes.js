@@ -1,10 +1,8 @@
 import { Router } from 'express';
-import currentUser from '../middleware/currentUser.js';
+import authGuard from '../middleware/auth.js';
 import { getDashboard } from '../controllers/dashboard.controller.js';
 
 const router = Router();
-
-router.use(currentUser);
+router.use(authGuard);
 router.get('/', getDashboard);
-
 export default router;

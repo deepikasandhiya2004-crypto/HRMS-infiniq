@@ -1,11 +1,9 @@
 import { Router } from 'express';
-import currentUser from '../middleware/currentUser.js';
+import authGuard from '../middleware/auth.js';
 import { getMyTeam, getMember } from '../controllers/team.controller.js';
 
 const router = Router();
-
-router.use(currentUser);
+router.use(authGuard);
 router.get('/my', getMyTeam);
 router.get('/members/:id', getMember);
-
 export default router;

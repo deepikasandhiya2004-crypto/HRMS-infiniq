@@ -1,0 +1,2 @@
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_token_hash TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;

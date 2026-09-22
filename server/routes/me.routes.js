@@ -1,10 +1,6 @@
 import { Router } from 'express';
-import currentUser from '../middleware/currentUser.js';
+import authGuard from '../middleware/auth.js';
 
 const router = Router();
-
-router.get('/', currentUser, (req, res) => {
-  res.json({ user: req.user });
-});
-
+router.get('/', authGuard, (req, res) => res.json({ user: req.user }));
 export default router;
