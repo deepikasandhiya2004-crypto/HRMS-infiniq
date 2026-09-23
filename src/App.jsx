@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Team from "./pages/Team.jsx";
 import Attendance from "./pages/Attendance.jsx";
 import Settings from "./pages/Settings.jsx";
+import Reports from "./pages/reports.jsx";
 
 // Leave Tracker
 import LeaveTrackerLayout from "./pages/leave/LeaveTrackerLayout.jsx";
@@ -42,86 +43,87 @@ import RolesPermissionsConfig from "./pages/configuration/RolesPermissionsConfig
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+   <AuthProvider>
+  <ToastProvider>
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Protected routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
+      {/* Protected routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          {/* Existing modules */}
+          <Route index element={<Dashboard />} />
+          <Route path="team" element={<Team />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="settings" element={<Settings />} />
 
-              {/* Existing modules */}
-              <Route index element={<Dashboard />} />
-              <Route path="team" element={<Team />} />
-              <Route path="attendance" element={<Attendance />} />
-              <Route path="settings" element={<Settings />} />
+          {/* Reports */}
+          <Route path="reports" element={<Reports />} />
 
-              {/* Leave Tracker */}
-              <Route path="leave-tracker" element={<LeaveTrackerLayout />}>
-                <Route
-                  index
-                  element={<Navigate to="my-leave" replace />}
-                />
-                <Route path="my-leave" element={<MyLeave />} />
-                <Route path="balance" element={<LeaveBalance />} />
-                <Route path="apply" element={<ApplyLeave />} />
-                <Route path="team" element={<TeamLeave />} />
-                <Route path="calendar" element={<LeaveCalendar />} />
-              </Route>
-
-              {/* Operations */}
-              <Route path="operations" element={<OperationsLayout />}>
-                <Route
-                  index
-                  element={<Navigate to="employees" replace />}
-                />
-                <Route path="employees" element={<Employees />} />
-                <Route path="onboarding" element={<Onboarding />} />
-                <Route path="offboarding" element={<Offboarding />} />
-                <Route path="hr-services" element={<HrServices />} />
-                <Route
-                  path="employee-requests"
-                  element={<EmployeeRequests />}
-                />
-              </Route>
-
-              {/* Configuration */}
-              <Route
-                path="configuration"
-                element={<ConfigurationLayout />}
-              >
-                <Route
-                  index
-                  element={<Navigate to="general" replace />}
-                />
-                <Route path="general" element={<GeneralConfig />} />
-                <Route path="employee" element={<EmployeeConfig />} />
-                <Route
-                  path="attendance"
-                  element={<AttendanceConfig />}
-                />
-                <Route path="leave" element={<LeaveConfig />} />
-                <Route path="workflows" element={<WorkflowsConfig />} />
-                <Route
-                  path="roles-permissions"
-                  element={<RolesPermissionsConfig />}
-                />
-              </Route>
-
-              {/* Fallback */}
-              <Route
-                path="*"
-                element={<Navigate to="/" replace />}
-              />
-            </Route>
+          {/* Leave Tracker */}
+          <Route path="leave-tracker" element={<LeaveTrackerLayout />}>
+            <Route
+              index
+              element={<Navigate to="my-leave" replace />}
+            />
+            <Route path="my-leave" element={<MyLeave />} />
+            <Route path="balance" element={<LeaveBalance />} />
+            <Route path="apply" element={<ApplyLeave />} />
+            <Route path="team" element={<TeamLeave />} />
+            <Route path="calendar" element={<LeaveCalendar />} />
           </Route>
-        </Routes>
-      </ToastProvider>
-    </AuthProvider>
-  );
-}
+
+          {/* Operations */}
+          <Route path="operations" element={<OperationsLayout />}>
+            <Route
+              index
+              element={<Navigate to="employees" replace />}
+            />
+            <Route path="employees" element={<Employees />} />
+            <Route path="onboarding" element={<Onboarding />} />
+            <Route path="offboarding" element={<Offboarding />} />
+            <Route path="hr-services" element={<HrServices />} />
+            <Route
+              path="employee-requests"
+              element={<EmployeeRequests />}
+            />
+          </Route>
+
+          {/* Configuration */}
+          <Route
+            path="configuration"
+            element={<ConfigurationLayout />}
+          >
+            <Route
+              index
+              element={<Navigate to="general" replace />}
+            />
+            <Route path="general" element={<GeneralConfig />} />
+            <Route path="employee" element={<EmployeeConfig />} />
+            <Route
+              path="attendance"
+              element={<AttendanceConfig />}
+            />
+            <Route path="leave" element={<LeaveConfig />} />
+            <Route path="workflows" element={<WorkflowsConfig />} />
+            <Route
+              path="roles-permissions"
+              element={<RolesPermissionsConfig />}
+            />
+          </Route>
+
+          {/* Fallback */}
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
+        </Route>
+      </Route>
+    </Routes>
+  </ToastProvider>
+</AuthProvider>
+  }
