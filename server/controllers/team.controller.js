@@ -69,3 +69,42 @@ export async function getMember(req, res) {
     res.status(500).json({ message: 'Could not load employee' });
   }
 }
+
+export async function createTeamMember(req, res) {
+  const { full_name, email, department, designation } = req.body || {};
+
+  if (!full_name || full_name.trim().length < 2) {
+    return res.status(400).json({ message: 'Please enter a name' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '')) {
+    return res.status(400).json({ message: 'Enter a valid email' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `INSERT INTO employees (employee_code, full_name, email, role, department, designation, manager_id, status, joined_on)
+       VALUES ('PENDING', $1, $2, 'employee', $3, $4, $5, 'active', CURRENT_DATE)
+       RETURNING id`,
+      [full_name.trim(), email.trim().toLowerCase(), department || null, designation || null, req.user.id]
+    );
+    const id = rows[0].id;
+    const code = `EMP${String(id).padStart(4, '0')}`;
+    await client.query(`UPDATE employees SET employee_code = $2 WHERE id = $1`, [id, code]);
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      employee: { id, employee_code: code, full_name: full_name.trim(), email: email.trim().toLowerCase(), department, designation },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (err.code === '23505') {
+      return res.status(409).json({ message: 'An employee with this email already exists' });
+    }
+    console.error(err);
+    res.status(500).json({ message: 'Could not add team member' });
+  } finally {
+    client.release();
+  }
+}

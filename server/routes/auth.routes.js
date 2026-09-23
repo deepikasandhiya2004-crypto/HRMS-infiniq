@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { login, signup, forgotPassword, resetPassword } from '../controllers/auth.controller.js';
+import authGuard from '../middleware/auth.js';
+import { login, signup, forgotPassword, resetPassword, changePassword } from '../controllers/auth.controller.js';
 
 const router = Router();
 router.post('/login', login);
 router.post('/signup', signup);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/change-password', authGuard, changePassword);
 export default router;

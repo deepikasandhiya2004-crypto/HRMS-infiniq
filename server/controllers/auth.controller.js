@@ -143,3 +143,40 @@ export async function resetPassword(req, res) {
     res.status(500).json({ message: 'Could not reset password' });
   }
 }
+
+export async function changePassword(req, res) {
+  const { current_password, new_password } = req.body || {};
+
+  if (!current_password || !new_password) {
+    return res.status(400).json({ message: 'Current and new password are required' });
+  }
+  if (new_password.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters' });
+  }
+  if (current_password === new_password) {
+    return res.status(400).json({ message: 'New password must be different from the current one' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT password_hash FROM employees WHERE id = $1`,
+      [req.user.id]
+    );
+    const employee = rows[0];
+    if (!employee || !employee.password_hash) {
+      return res.status(400).json({ message: 'No password set on this account' });
+    }
+
+    const ok = await bcrypt.compare(current_password, employee.password_hash);
+    if (!ok) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query(`UPDATE employees SET password_hash = $2 WHERE id = $1`, [req.user.id, hash]);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not update password' });
+  }
+}
