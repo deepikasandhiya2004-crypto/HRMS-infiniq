@@ -11,12 +11,14 @@ import authRoutes from './routes/auth.routes.js';
 import leaveRoutes from './routes/leave.routes.js';
 import operationsRoutes from './routes/operations.routes.js';
 import configurationRoutes from './routes/configuration.routes.js';
+import reportsRoutes from './routes/reports.routes.js';
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/api/reports', reportsRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

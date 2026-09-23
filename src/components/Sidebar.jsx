@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const { user, role, isAllAccess } = useAuth();
+
 
 const CORE = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", end: true },
@@ -108,8 +108,10 @@ const GROUPS = [
 
 
 
+
+
 export default function Sidebar() {
-  const { user, role } = useAuth();
+  const { user, role, isAllAccess } = useAuth();
   const [open, setOpen] = useState({});
 
   const toggle = (key) => {
@@ -215,7 +217,7 @@ export default function Sidebar() {
           Administration
         </div>
 
-        
+
 
         {/* Settings */}
         <NavLink
