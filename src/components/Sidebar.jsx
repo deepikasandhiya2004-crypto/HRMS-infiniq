@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
+const { user, role, isAllAccess } = useAuth();
+
 const CORE = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/team", icon: Users, label: "Team" },
@@ -66,13 +68,45 @@ const GROUPS = [
       },
     ],
   },
+    {
+    key: "reports",
+    label: "Reports",
+    icon: BarChart3,
+    items: [
+      { label: "My Reports", to: "/reports/my-reports" },
+      { label: "Team Reports", to: "/reports/team-reports" },
+      { label: "Organization Reports", to: "/reports/organization-reports", adminOnly: true },
+      { label: "Export Center", to: "/reports/export-center", adminOnly: true },
+    ],
+  },
+  {
+    key: "organization",
+    label: "Organization",
+    icon: Building2,
+    adminOnly: true,
+    items: [
+      { label: "Company", to: "/organization/company" },
+      { label: "Departments", to: "/organization/departments" },
+      { label: "Designations", to: "/organization/designations" },
+      { label: "Locations", to: "/organization/locations" },
+      { label: "Teams", to: "/organization/teams" },
+      { label: "Org Structure", to: "/organization/structure" },
+    ],
+  },
+  {
+    key: "audit",
+    label: "Audit Logs",
+    icon: ClipboardList,
+    adminOnly: true,
+    items: [
+      { label: "Activity Logs", to: "/audit-logs/activity" },
+      { label: "Login History", to: "/audit-logs/login-history" },
+      { label: "Admin History", to: "/audit-logs/admin-history" },
+    ],
+  },
 ];
 
-const SINGLES = [
-  { label: "Reports", icon: BarChart3 },
-  { label: "Organization", icon: Building2 },
-  { label: "Audit Logs", icon: ClipboardList },
-];
+
 
 export default function Sidebar() {
   const { user, role } = useAuth();
@@ -135,7 +169,7 @@ export default function Sidebar() {
         ))}
 
         {/* Member 2 Modules */}
-        {GROUPS.map((group) => (
+        {GROUPS.filter((g) => !g.adminOnly || isAllAccess).map((group) =>  (
           <div key={group.key}>
             <button
               type="button"
@@ -156,7 +190,7 @@ export default function Sidebar() {
 
             {open[group.key] && (
               <div className="mt-1 flex flex-col gap-0.5 pl-7">
-                {group.items.map((item) => (
+                {group.items.filter((it) => !it.adminOnly || isAllAccess).map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
@@ -181,15 +215,7 @@ export default function Sidebar() {
           Administration
         </div>
 
-        {SINGLES.map(({ label, icon: Icon }) => (
-          <div
-            key={label}
-            className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-cream/70 hover:bg-white/5 hover:text-white cursor-pointer transition-all"
-          >
-            <Icon size={17} />
-            <span>{label}</span>
-          </div>
-        ))}
+        
 
         {/* Settings */}
         <NavLink
