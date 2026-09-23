@@ -51,4 +51,11 @@ CREATE INDEX IF NOT EXISTS idx_leave_requests_emp
   ON leave_requests (employee_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_leave_requests_dates
-  ON leave_requests (from_date, to_date, status);
+  ON leave_requests (from_date, to_date, status);INSERT INTO leave_types
+  (code, name, annual_allocation, carry_forward, max_carry_forward,
+   encashment, half_day_allowed, attachment_required, approval_required, active)
+VALUES
+  ('CL', 'Casual Leave', 0, FALSE, 0, FALSE, TRUE, FALSE, TRUE, TRUE),
+  ('SL', 'Sick Leave', 0, FALSE, 0, FALSE, TRUE, TRUE, TRUE, TRUE),
+  ('EL', 'Earned Leave', 0, TRUE, 30, TRUE, TRUE, FALSE, TRUE, TRUE)
+ON CONFLICT (code) DO NOTHING;
