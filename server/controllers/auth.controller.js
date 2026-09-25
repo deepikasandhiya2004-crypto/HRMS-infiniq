@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
+import { createAuditLog } from "../utils/auditLogger.js";
 
 export async function login(req, res) {
   const { email, password } = req.body || {};
@@ -22,9 +23,28 @@ export async function login(req, res) {
       return res.status(403).json({ message: 'This account is inactive' });
     }
     const ok = await bcrypt.compare(password, employee.password_hash);
-    if (!ok) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+   
+   if (!ok) {
+  await createAuditLog({
+    req,
+    userId: employee.id,
+    action: "Login Failed",
+    module: "Authentication",
+    description: "Failed login attempt",
+    targetId: employee.id,
+    targetName: employee.full_name,
+  });
+
+  return res.status(401).json({ message: 'Invalid email or password' });
+}
+await createAuditLog({
+  req,
+  action: "Login",
+  module: "Authentication",
+  description: "Successfully logged into the system",
+  targetId: employee.id,
+  targetName: employee.full_name,
+});
     const token = jwt.sign({ id: employee.id }, process.env.JWT_SECRET, { expiresIn: '8h' });
     await pool.query(
       `INSERT INTO login_logs (employee_id, ip_address, user_agent) VALUES ($1, $2, $3)`,

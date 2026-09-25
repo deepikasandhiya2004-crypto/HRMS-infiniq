@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink , useLocation} from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -68,22 +68,22 @@ const GROUPS = [
       },
     ],
   },
-    {
-    key: "reports",
-    label: "Reports",
-    icon: BarChart3,
-    items: [
-      { label: "My Reports", to: "/reports/my-reports" },
-      { label: "Team Reports", to: "/reports/team-reports" },
-      { label: "Organization Reports", to: "/reports/organization-reports", adminOnly: true },
-      { label: "Export Center", to: "/reports/export-center", adminOnly: true },
-    ],
-  },
+   {
+  key: "reports",
+  label: "Reports",
+  icon: BarChart3,
+  items: [
+    { label: "My Reports", to: "/reports?tab=my" },
+    { label: "Team Reports", to: "/reports?tab=team" },
+    { label: "Organization Reports", to: "/reports?tab=organization" },
+    { label: "Export Center", to: "/reports?tab=export"},
+  ],
+},
   {
     key: "organization",
     label: "Organization",
     icon: Building2,
-    adminOnly: true,
+    
     items: [
       { label: "Company", to: "/organization/company" },
       { label: "Departments", to: "/organization/departments" },
@@ -97,7 +97,7 @@ const GROUPS = [
     key: "audit",
     label: "Audit Logs",
     icon: ClipboardList,
-    adminOnly: true,
+    
     items: [
       { label: "Activity Logs", to: "/audit-logs/activity" },
       { label: "Login History", to: "/audit-logs/login-history" },
@@ -112,6 +112,7 @@ const GROUPS = [
 
 export default function Sidebar() {
   const { user, role, isAllAccess } = useAuth();
+  const location = useLocation();
   const [open, setOpen] = useState({});
 
   const toggle = (key) => {
@@ -193,19 +194,24 @@ export default function Sidebar() {
             {open[group.key] && (
               <div className="mt-1 flex flex-col gap-0.5 pl-7">
                 {group.items.filter((it) => !it.adminOnly || isAllAccess).map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                      `block rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                        isActive
-                          ? "bg-white/10 text-accent font-bold"
-                          : "text-cream/60 hover:bg-white/5 hover:text-white"
-                      }`
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
+                <NavLink
+  key={item.to}
+  to={item.to}
+  className={({ isActive }) => {
+    const active =
+      item.to.startsWith("/reports?")
+        ? `${location.pathname}${location.search}` === item.to
+        : isActive;
+
+    return `block rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+      active
+        ? "bg-white/10 text-accent font-bold"
+        : "text-cream/60 hover:bg-white/5 hover:text-white"
+    }`;
+  }}
+>
+  {item.label}
+</NavLink>
                 ))}
               </div>
             )}

@@ -12,6 +12,8 @@ import leaveRoutes from './routes/leave.routes.js';
 import operationsRoutes from './routes/operations.routes.js';
 import configurationRoutes from './routes/configuration.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
+import organizationRoutes from "./routes/organization.routes.js";
+import auditRoutes from "./routes/audit.routes.js";
 
 dotenv.config();
 
@@ -20,6 +22,7 @@ app.use(cors());
 app.use(express.json());
 app.set('trust proxy', true);
 app.use('/api/reports', reportsRoutes);
+app.use("/api/audit", auditRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
@@ -40,6 +43,8 @@ app.use('/api/me', meRoutes);
 app.use('/api/leave', leaveRoutes);
 app.use('/api/operations', operationsRoutes);
 app.use('/api/configuration', configurationRoutes);
+app.use("/api/organization", organizationRoutes);
+app.use("/api/audit-logs", auditRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
