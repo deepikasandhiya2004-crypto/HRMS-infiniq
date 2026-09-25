@@ -15,6 +15,17 @@ export default function Settings() {
   const [pwMsg, setPwMsg] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
 
+    const [logins, setLogins] = useState(null);
+  const [loginsError, setLoginsError] = useState("");
+
+  useEffect(() => {
+    if (tab === "security" && !logins && !loginsError) {
+      api.get("/auth/login-history")
+        .then((r) => setLogins(r.data.logins))
+        .catch((e) => setLoginsError(e.message));
+    }
+  }, [tab]);
+
   async function submitPassword(e) {
     e.preventDefault();
     setPwError(""); setPwMsg("");
@@ -180,31 +191,66 @@ export default function Settings() {
           </div>
         </div>
       )}
-      {tab === "security" && (
-        <div className="rounded-2xl bg-white p-5 border border-primary/10 shadow-sm max-w-md">
-          <h2 className="text-sm font-extrabold text-primary mb-1">Change Password</h2>
-          <p className="text-xs text-primary/50 mb-4">Choose a strong password you don't use elsewhere.</p>
+            {tab === "security" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-white p-5 border border-primary/10 shadow-sm max-w-md">
+            <h2 className="text-sm font-extrabold text-primary mb-1">Change Password</h2>
+            <p className="text-xs text-primary/50 mb-4">Choose a strong password you don't use elsewhere.</p>
 
-          {pwError && <div className="mb-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">{pwError}</div>}
-          {pwMsg && <div className="mb-3 rounded-xl bg-accent/10 border border-accent/30 px-3 py-2 text-xs text-primary">{pwMsg}</div>}
+            {pwError && <div className="mb-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">{pwError}</div>}
+            {pwMsg && <div className="mb-3 rounded-xl bg-accent/10 border border-accent/30 px-3 py-2 text-xs text-primary">{pwMsg}</div>}
 
-          <form onSubmit={submitPassword} className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-primary/70">Current Password</label>
-              <input type="password" required value={pwForm.current_password} onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })} className="mt-1 w-full rounded-lg border border-primary/20 px-3 py-2 text-xs" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-primary/70">New Password</label>
-              <input type="password" required minLength={8} value={pwForm.new_password} onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })} className="mt-1 w-full rounded-lg border border-primary/20 px-3 py-2 text-xs" placeholder="At least 8 characters" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-primary/70">Confirm New Password</label>
-              <input type="password" required minLength={8} value={pwForm.confirm} onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })} className="mt-1 w-full rounded-lg border border-primary/20 px-3 py-2 text-xs" />
-            </div>
-            <button type="submit" disabled={pwBusy} className="w-full rounded-lg bg-primary py-2.5 text-xs font-bold text-white disabled:opacity-60">
-              {pwBusy ? "Updating…" : "Update Password"}
-            </button>
-          </form>
+            <form onSubmit={submitPassword} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-primary/70">Current Password</label>
+                <input type="password" required value={pwForm.current_password} onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })} className="mt-1 w-full rounded-lg border border-primary/20 px-3 py-2 text-xs" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-primary/70">New Password</label>
+                <input type="password" required minLength={8} value={pwForm.new_password} onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })} className="mt-1 w-full rounded-lg border border-primary/20 px-3 py-2 text-xs" placeholder="At least 8 characters" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-primary/70">Confirm New Password</label>
+                <input type="password" required minLength={8} value={pwForm.confirm} onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })} className="mt-1 w-full rounded-lg border border-primary/20 px-3 py-2 text-xs" />
+              </div>
+              <button type="submit" disabled={pwBusy} className="w-full rounded-lg bg-primary py-2.5 text-xs font-bold text-white disabled:opacity-60">
+                {pwBusy ? "Updating…" : "Update Password"}
+              </button>
+            </form>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 border border-primary/10 shadow-sm">
+            <h2 className="text-sm font-extrabold text-primary mb-1">Login History</h2>
+            <p className="text-xs text-primary/50 mb-4">Your last 20 logins to this account.</p>
+
+            {loginsError && <p className="text-xs text-red-600">{loginsError}</p>}
+            {!logins && !loginsError && <p className="text-xs text-primary/50">Loading…</p>}
+            {logins && logins.length === 0 && <p className="text-xs text-primary/40">No login history yet.</p>}
+            {logins && logins.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-primary/50 border-b border-primary/10">
+                      <th className="py-2 pr-4">Date & Time</th>
+                      <th className="py-2 pr-4">IP Address</th>
+                      <th className="py-2 pr-4">Device</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logins.map((l) => (
+                      <tr key={l.id} className="border-b border-primary/5">
+                        <td className="py-2 pr-4 text-primary/80">
+                          {new Date(l.logged_in_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                        </td>
+                        <td className="py-2 pr-4 text-primary/60">{l.ip_address || "—"}</td>
+                        <td className="py-2 pr-4 text-primary/60 max-w-xs truncate">{l.user_agent || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

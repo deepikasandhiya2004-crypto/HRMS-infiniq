@@ -26,6 +26,10 @@ export async function login(req, res) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
     const token = jwt.sign({ id: employee.id }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    await pool.query(
+      `INSERT INTO login_logs (employee_id, ip_address, user_agent) VALUES ($1, $2, $3)`,
+      [employee.id, req.ip, req.header('user-agent') || null]
+    );
     res.json({
       token,
       user: {
@@ -141,6 +145,23 @@ export async function resetPassword(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Could not reset password' });
+  }
+}
+
+export async function getLoginHistory(req, res) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, ip_address, user_agent, logged_in_at
+       FROM login_logs
+       WHERE employee_id = $1
+       ORDER BY logged_in_at DESC
+       LIMIT 20`,
+      [req.user.id]
+    );
+    res.json({ logins: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not load login history' });
   }
 }
 
