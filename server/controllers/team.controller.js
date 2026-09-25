@@ -108,3 +108,73 @@ export async function createTeamMember(req, res) {
     client.release();
   }
 }
+
+export async function getOrganizationTree(req, res) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT e.id, e.employee_code, e.full_name, e.designation, e.department,
+              e.manager_id, m.full_name AS manager_name
+       FROM employees e
+       LEFT JOIN employees m ON m.id = e.manager_id
+       WHERE e.status = 'active'
+       ORDER BY e.department NULLS LAST, e.full_name`
+    );
+
+    const grouped = {};
+    for (const emp of rows) {
+      const dept = emp.department || "Unassigned";
+      if (!grouped[dept]) grouped[dept] = [];
+      grouped[dept].push(emp);
+    }
+
+    res.json({ departments: grouped });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not load organization tree' });
+  }
+}
+
+export async function getMemberAttendance(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: 'Invalid employee id' });
+  }
+  const month = req.query.month;
+  if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return res.status(400).json({ message: 'month must be in YYYY-MM format' });
+  }
+
+  try {
+    const { rows: empRows } = await pool.query(
+      `SELECT id, manager_id FROM employees WHERE id = $1`,
+      [id]
+    );
+    const employee = empRows[0];
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+    const allowed =
+      employee.id === req.user.id ||
+      employee.manager_id === req.user.id ||
+      ALL_SCOPE_ROLES.includes(req.user.role);
+    if (!allowed) {
+      return res.status(403).json({ message: 'You do not have permission to view this attendance' });
+    }
+
+    const ym = month || new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 7);
+    const { rows } = await pool.query(
+      `SELECT work_date, check_in, check_out, status,
+              EXTRACT(EPOCH FROM (COALESCE(check_out, check_in) - check_in))::int AS work_seconds
+       FROM attendance
+       WHERE employee_id = $1
+         AND work_date >= $2::date
+         AND work_date < ($2::date + INTERVAL '1 month')
+       ORDER BY work_date DESC`,
+      [id, `${ym}-01`]
+    );
+
+    res.json({ month: ym, records: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not load attendance' });
+  }
+}

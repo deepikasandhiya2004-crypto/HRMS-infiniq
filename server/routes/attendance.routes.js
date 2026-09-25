@@ -2,8 +2,22 @@ import { Router } from 'express';
 import authGuard from '../middleware/auth.js';
 import requireRole from '../middleware/requireRole.js';
 import { REVIEWER_ROLES } from '../config/roles.js';
-import { getToday, checkIn, checkOut, startBreak, endBreak, getHistory } from '../controllers/attendance.controller.js';
-import { createRequest, listMyRequests, listPending, approveRequest, rejectRequest } from '../controllers/requests.controller.js';
+import {
+  getToday,
+  checkIn,
+  checkOut,
+  startBreak,
+  endBreak,
+  getHistory,
+  getTeamAttendance,
+} from '../controllers/attendance.controller.js';
+import {
+  createRequest,
+  listMyRequests,
+  listPending,
+  approveRequest,
+  rejectRequest,
+} from '../controllers/requests.controller.js';
 
 const router = Router();
 router.use(authGuard);
@@ -21,5 +35,6 @@ const reviewers = requireRole(...REVIEWER_ROLES);
 router.get('/requests/pending', reviewers, listPending);
 router.post('/requests/:id/approve', reviewers, approveRequest);
 router.post('/requests/:id/reject', reviewers, rejectRequest);
+router.get('/team', reviewers, getTeamAttendance);
 
 export default router;

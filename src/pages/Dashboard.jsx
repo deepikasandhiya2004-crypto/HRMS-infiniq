@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Clock, Coffee, LogOut, User, ClipboardList, CalendarDays, Users, Palmtree, FileCheck2, UserX, Sparkles } from "lucide-react";
+import { Clock, Coffee, LogOut, User, ClipboardList, CalendarDays, Users, Palmtree, FileCheck2, UserX, Sparkles, Mail, Building2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import StatCard from "../components/common/StatCard.jsx";
+import StatusBadge from "../components/common/StatusBadge.jsx";
 import api from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { fmtTime, fmtDuration } from "../utils/format.js";
+import { fmtTime, fmtDuration, fmtDate } from "../utils/format.js";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isReviewer } = useAuth();
   const [data, setData] = useState(null);
   const [trend, setTrend] = useState(null);
+  const [pendingList, setPendingList] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,12 +20,13 @@ export default function Dashboard() {
     setLoading(true);
     setError("");
     try {
-      const [dash, hist] = await Promise.all([
-        api.get("/dashboard"),
-        api.get("/attendance/history"),
-      ]);
+      const calls = [api.get("/dashboard"), api.get("/attendance/history")];
+      if (isReviewer) calls.push(api.get("/attendance/requests/pending"));
+
+      const [dash, hist, pend] = await Promise.all(calls);
       setData(dash.data);
       setTrend(buildTrend(hist.data.records));
+      if (isReviewer) setPendingList(pend.data.requests);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,7 +42,7 @@ export default function Dashboard() {
     }));
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [isReviewer]);
 
   async function run(fn) {
     setBusy(true);
@@ -79,57 +82,75 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Today's attendance */}
-      <div className="rounded-2xl bg-white border border-primary/10 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-primary/10">
-          <div className="flex items-center gap-2">
-            <Clock size={16} className="text-primary" />
-            <h2 className="text-sm font-extrabold text-primary">Today's Attendance</h2>
-          </div>
-          {attendance && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Today's attendance */}
+        <div className="lg:col-span-2 rounded-2xl bg-white border border-primary/10 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-primary/10">
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-bold text-accent capitalize">{attendance.status}</span>
-              <span className="text-xs text-primary/50">{fmtTime(attendance.check_in)}</span>
+              <Clock size={16} className="text-primary" />
+              <h2 className="text-sm font-extrabold text-primary">Today's Attendance</h2>
+            </div>
+            {attendance && (
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-bold text-accent capitalize">{attendance.status}</span>
+                <span className="text-xs text-primary/50">{fmtTime(attendance.check_in)}</span>
+              </div>
+            )}
+          </div>
+
+          {attendance ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-5 py-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Check-in</p>
+                <p className="mt-1 text-lg font-extrabold text-primary">{fmtTime(attendance.check_in)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Working Hours</p>
+                <p className="mt-1 text-lg font-extrabold text-primary">{fmtDuration(attendance.work_seconds)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Break</p>
+                <p className="mt-1 text-lg font-extrabold text-primary">{fmtDuration(attendance.break_seconds)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Check-out</p>
+                <p className="mt-1 text-lg font-extrabold text-primary">{fmtTime(attendance.check_out)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="px-5 py-4 text-xs text-primary/50">You haven't checked in today.</p>
+          )}
+
+          {attendance && !attendance.check_out && (
+            <div className="flex gap-2 px-5 pb-4">
+              {!attendance.on_break ? (
+                <button disabled={busy} onClick={() => run(() => api.post("/attendance/break/start"))} className="flex items-center gap-1.5 rounded-lg bg-purple/10 px-3 py-1.5 text-xs font-bold text-purple">
+                  <Coffee size={13} /> Start Break
+                </button>
+              ) : (
+                <button disabled={busy} onClick={() => run(() => api.post("/attendance/break/end"))} className="flex items-center gap-1.5 rounded-lg bg-purple px-3 py-1.5 text-xs font-bold text-white">
+                  <Coffee size={13} /> End Break
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {attendance ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-5 py-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Check-in</p>
-              <p className="mt-1 text-lg font-extrabold text-primary">{fmtTime(attendance.check_in)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Working Hours</p>
-              <p className="mt-1 text-lg font-extrabold text-primary">{fmtDuration(attendance.work_seconds)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Break</p>
-              <p className="mt-1 text-lg font-extrabold text-primary">{fmtDuration(attendance.break_seconds)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-primary/40">Check-out</p>
-              <p className="mt-1 text-lg font-extrabold text-primary">{fmtTime(attendance.check_out)}</p>
+        {/* My Profile card */}
+        <div className="rounded-2xl bg-white border border-primary/10 shadow-sm p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <img src={user.avatar} alt={user.name} className="h-12 w-12 rounded-full border border-accent/40" />
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold text-primary truncate">{user.name}</p>
+              <p className="text-[11px] text-primary/50 capitalize">{user.role.replace(/_/g, " ")}</p>
             </div>
           </div>
-        ) : (
-          <p className="px-5 py-4 text-xs text-primary/50">You haven't checked in today.</p>
-        )}
-
-        {attendance && !attendance.check_out && (
-          <div className="flex gap-2 px-5 pb-4">
-            {!attendance.on_break ? (
-              <button disabled={busy} onClick={() => run(() => api.post("/attendance/break/start"))} className="flex items-center gap-1.5 rounded-lg bg-purple/10 px-3 py-1.5 text-xs font-bold text-purple">
-                <Coffee size={13} /> Start Break
-              </button>
-            ) : (
-              <button disabled={busy} onClick={() => run(() => api.post("/attendance/break/end"))} className="flex items-center gap-1.5 rounded-lg bg-purple px-3 py-1.5 text-xs font-bold text-white">
-                <Coffee size={13} /> End Break
-              </button>
-            )}
+          <div className="space-y-2 text-xs text-primary/70">
+            <p className="flex items-center gap-2"><Mail size={13} className="text-primary/40" /> {user.email}</p>
+            <p className="flex items-center gap-2"><Building2 size={13} className="text-primary/40" /> {user.department || "—"} · {user.roleTitle || "—"}</p>
           </div>
-        )}
+          <a href="/settings" className="mt-4 inline-block text-xs font-bold text-primary hover:underline">Edit Profile →</a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -153,7 +174,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Pending requests */}
+        {/* My requests */}
         <div className="rounded-2xl bg-white border border-primary/10 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-1">
             <ClipboardList size={16} className="text-primary" />
@@ -164,6 +185,39 @@ export default function Dashboard() {
           <a href="/attendance" className="mt-4 inline-block text-xs font-bold text-primary hover:underline">View on Attendance page →</a>
         </div>
       </div>
+
+      {/* Pending Approvals list (reviewers only) */}
+      {isReviewer && (
+        <div className="rounded-2xl bg-white border border-primary/10 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <FileCheck2 size={16} className="text-primary" />
+              <h2 className="text-sm font-extrabold text-primary">Pending Approvals</h2>
+            </div>
+            {pendingList && pendingList.length > 0 && (
+              <a href="/attendance" className="text-xs font-bold text-primary hover:underline">View all →</a>
+            )}
+          </div>
+          <p className="text-xs text-primary/50 mb-3">Attendance regularization requests waiting on you</p>
+
+          {pendingList && pendingList.length === 0 && (
+            <p className="text-xs text-primary/40 py-2">Nothing pending right now.</p>
+          )}
+          {pendingList && pendingList.length > 0 && (
+            <div className="divide-y divide-primary/5">
+              {pendingList.slice(0, 4).map((r) => (
+                <div key={r.id} className="flex items-center justify-between py-2.5 text-xs">
+                  <div>
+                    <p className="font-semibold text-primary">{r.employee_name} · {fmtDate(r.work_date)}</p>
+                    <p className="text-primary/50">{r.issue_type.replace(/_/g, " ")} — {r.reason}</p>
+                  </div>
+                  <StatusBadge status={r.status} size="sm" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Attendance trend (real data) */}
       {trend && trend.length > 0 && (

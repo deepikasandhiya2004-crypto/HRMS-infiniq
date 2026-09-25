@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { ALL_SCOPE_ROLES } from '../config/roles.js';
 
 // Company date in India time. Neon runs in UTC, so plain CURRENT_DATE
 // would give the wrong date for early-morning check-ins.
@@ -186,5 +187,64 @@ export async function getHistory(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Could not load attendance history' });
+  }
+}
+
+export async function getTeamAttendance(req, res) {
+  const seeAll = ALL_SCOPE_ROLES.includes(req.user.role);
+  const month = req.query.month;
+  if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return res.status(400).json({ message: 'month must be in YYYY-MM format' });
+  }
+  const ym = month || new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 7);
+
+  try {
+    const { rows: members } = await pool.query(
+      `SELECT e.id, e.full_name, e.employee_code, e.designation,
+              COUNT(a.id) FILTER (WHERE a.status = 'present')::int AS present_days,
+              COUNT(a.id) FILTER (WHERE a.status = 'wfh')::int AS wfh_days,
+              COUNT(a.id) FILTER (WHERE a.status = 'leave')::int AS leave_days,
+              COUNT(a.id) FILTER (
+                WHERE a.check_in IS NOT NULL AND a.check_out IS NULL AND a.work_date < ${TODAY_IST}
+              )::int AS missed_checkouts,
+              COALESCE(SUM(
+                CASE WHEN a.check_out IS NOT NULL
+                  THEN EXTRACT(EPOCH FROM (a.check_out - a.check_in))
+                  ELSE 0 END
+              ), 0)::int AS total_work_seconds
+       FROM employees e
+       LEFT JOIN attendance a
+         ON a.employee_id = e.id
+         AND a.work_date >= $2::date
+         AND a.work_date < ($2::date + INTERVAL '1 month')
+       WHERE e.status = 'active'
+         AND e.id <> $1
+         AND ($3::boolean OR e.manager_id = $1)
+       GROUP BY e.id, e.full_name, e.employee_code, e.designation
+       ORDER BY e.full_name`,
+      [req.user.id, `${ym}-01`, seeAll]
+    );
+
+    const { rows: daily } = await pool.query(
+      `SELECT a.work_date,
+              COUNT(*) FILTER (WHERE a.status = 'present')::int AS present,
+              COUNT(*) FILTER (WHERE a.status = 'wfh')::int AS wfh,
+              COUNT(*) FILTER (WHERE a.status = 'leave')::int AS leave
+       FROM attendance a
+       JOIN employees e ON e.id = a.employee_id
+       WHERE a.work_date >= $2::date
+         AND a.work_date < ($2::date + INTERVAL '1 month')
+         AND e.status = 'active'
+         AND e.id <> $1
+         AND ($3::boolean OR e.manager_id = $1)
+       GROUP BY a.work_date
+       ORDER BY a.work_date`,
+      [req.user.id, `${ym}-01`, seeAll]
+    );
+
+    res.json({ month: ym, members, daily });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not load team attendance' });
   }
 }

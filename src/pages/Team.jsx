@@ -1,22 +1,36 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { X, Users, UserCheck, Palmtree, Clock, Search, UserPlus } from "lucide-react";
+import { X, Users, UserCheck, Palmtree, Clock, Search, UserPlus, Building2, ChevronDown, ChevronRight } from "lucide-react";
 import StatCard from "../components/common/StatCard.jsx";
 import StatusBadge from "../components/common/StatusBadge.jsx";
+import Dropdown from "../components/common/Dropdown.jsx";
 import api from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { fmtTime, fmtDate } from "../utils/format.js";
-import Dropdown from "../components/common/Dropdown.jsx";
+import { fmtTime, fmtDate, fmtDuration, currentMonth } from "../utils/format.js";
 
 export default function Team() {
   const { isReviewer } = useAuth();
+  const [tab, setTab] = useState("my-team");
+
+  // My Team state
   const [team, setTeam] = useState(null);
   const [error, setError] = useState("");
-  const [profile, setProfile] = useState(null);
   const [pendingCount, setPendingCount] = useState(null);
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("All");
   const [status, setStatus] = useState("All");
 
+  // Organization Tree state
+  const [orgTree, setOrgTree] = useState(null);
+  const [orgError, setOrgError] = useState("");
+  const [openDepts, setOpenDepts] = useState({});
+
+  // Profile modal
+  const [profile, setProfile] = useState(null);
+  const [profileTab, setProfileTab] = useState("overview");
+  const [profileAttendance, setProfileAttendance] = useState(null);
+  const [profileAttError, setProfileAttError] = useState("");
+
+  // Add member modal
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ full_name: "", email: "", department: "", designation: "" });
   const [addError, setAddError] = useState("");
@@ -30,6 +44,13 @@ export default function Team() {
     } catch (e) { setError(e.message); }
   }
 
+  async function loadOrgTree() {
+    try {
+      const r = await api.get("/team/organization");
+      setOrgTree(r.data.departments);
+    } catch (e) { setOrgError(e.message); }
+  }
+
   useEffect(() => {
     loadTeam();
     if (isReviewer) {
@@ -37,12 +58,35 @@ export default function Team() {
     }
   }, [isReviewer]);
 
+  useEffect(() => {
+    if (tab === "org-tree" && !orgTree) loadOrgTree();
+  }, [tab]);
+
   async function openProfile(id) {
+    setProfileTab("overview");
+    setProfileAttendance(null);
+    setProfileAttError("");
     try {
       const r = await api.get(`/team/members/${id}`);
       setProfile(r.data.employee);
     } catch (err) {
       alert(err.message);
+    }
+  }
+
+  async function loadProfileAttendance(id) {
+    try {
+      const r = await api.get(`/team/members/${id}/attendance?month=${currentMonth()}`);
+      setProfileAttendance(r.data.records);
+    } catch (err) {
+      setProfileAttError(err.message);
+    }
+  }
+
+  function openProfileTab(t) {
+    setProfileTab(t);
+    if (t === "attendance" && !profileAttendance && !profileAttError) {
+      loadProfileAttendance(profile.id);
     }
   }
 
@@ -94,101 +138,175 @@ export default function Team() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-primary/50">TEAM</p>
-          <h1 className="text-xl font-extrabold text-primary">My Team</h1>
+          <h1 className="text-xl font-extrabold text-primary">{tab === "my-team" ? "My Team" : "Organization Tree"}</h1>
           <p className="text-xs text-primary/50 mt-0.5">
-            {team.manager ? `Colleagues reporting to ${team.manager.full_name}` : "Your direct reports"}
+            {tab === "my-team"
+              ? (team.manager ? `Colleagues reporting to ${team.manager.full_name}` : "Your direct reports")
+              : "Company-wide directory by department"}
           </p>
         </div>
-        {isReviewer && (
+        {tab === "my-team" && isReviewer && (
           <button onClick={() => { setShowAdd(true); setAddError(""); setAddMsg(""); }} className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white">
             <UserPlus size={15} /> Add Team Member
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Team Size" value={team.members.length} icon={Users} accentColor="#00373A" />
-        <StatCard title="Present Today" value={presentCount} icon={UserCheck} accentColor="#00DC46" />
-        <StatCard title="On Leave" value={onLeaveCount} icon={Palmtree} accentColor="#FF6A3D" />
-        {isReviewer && <StatCard title="Pending Approvals" value={pendingCount ?? "—"} subtitle="Attendance requests" icon={Clock} accentColor="#7C3AED" />}
+      <div className="flex gap-1 border-b border-primary/10">
+        <button onClick={() => setTab("my-team")} className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 -mb-px ${tab === "my-team" ? "border-primary text-primary" : "border-transparent text-primary/50 hover:text-primary/70"}`}>
+          <Users size={14} /> My Team
+        </button>
+        <button onClick={() => setTab("org-tree")} className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 -mb-px ${tab === "org-tree" ? "border-primary text-primary" : "border-transparent text-primary/50 hover:text-primary/70"}`}>
+          <Building2 size={14} /> Organization Tree
+        </button>
       </div>
 
-      <div className="rounded-2xl bg-white border border-primary/10 shadow-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row gap-2 p-4 border-b border-primary/10">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/40" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, ID or designation…" className="w-full rounded-lg border border-primary/15 pl-8 pr-3 py-2 text-xs" />
+      {tab === "my-team" && (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard title="Team Size" value={team.members.length} icon={Users} accentColor="#00373A" />
+            <StatCard title="Present Today" value={presentCount} icon={UserCheck} accentColor="#00DC46" />
+            <StatCard title="On Leave" value={onLeaveCount} icon={Palmtree} accentColor="#FF6A3D" />
+            {isReviewer && <StatCard title="Pending Approvals" value={pendingCount ?? "—"} subtitle="Attendance requests" icon={Clock} accentColor="#7C3AED" />}
           </div>
-          <Dropdown
-            value={dept}
-            onChange={setDept}
-            options={departments.map((d) => ({ value: d, label: d === "All" ? "All Department" : d }))}
-          />
-          <Dropdown
-            value={status}
-            onChange={setStatus}
-            options={statuses.map((s) => ({
-              value: s,
-              label: s === "All" ? "All Status" : { present: "Present", wfh: "WFH", leave: "On Leave", not_checked_in: "Not Checked In" }[s] || s,
-            }))}
-          />
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-primary/50 border-b border-primary/10 bg-primary/5">
-                <th className="py-2.5 px-4">Employee</th>
-                <th className="py-2.5 px-4">Designation</th>
-                <th className="py-2.5 px-4">Department</th>
-                <th className="py-2.5 px-4">Today</th>
-                <th className="py-2.5 px-4">Check-in</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m) => (
-                <tr key={m.id} onClick={() => openProfile(m.id)} className="border-b border-primary/5 cursor-pointer hover:bg-primary/5">
-                  <td className="py-2.5 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                        {m.full_name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("")}
-                      </div>
+          <div className="rounded-2xl bg-white border border-primary/10 shadow-sm overflow-hidden">
+            <div className="flex flex-col sm:flex-row gap-2 p-4 border-b border-primary/10">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/40" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, ID or designation…" className="w-full rounded-lg border border-primary/15 pl-8 pr-3 py-2 text-xs" />
+              </div>
+              <Dropdown value={dept} onChange={setDept} options={departments.map((d) => ({ value: d, label: d === "All" ? "All Department" : d }))} />
+              <Dropdown
+                value={status}
+                onChange={setStatus}
+                options={statuses.map((s) => ({
+                  value: s,
+                  label: s === "All" ? "All Status" : { present: "Present", wfh: "WFH", leave: "On Leave", not_checked_in: "Not Checked In" }[s] || s,
+                }))}
+              />
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-primary/50 border-b border-primary/10 bg-primary/5">
+                    <th className="py-2.5 px-4">Employee</th>
+                    <th className="py-2.5 px-4">Designation</th>
+                    <th className="py-2.5 px-4">Department</th>
+                    <th className="py-2.5 px-4">Today</th>
+                    <th className="py-2.5 px-4">Check-in</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((m) => (
+                    <tr key={m.id} onClick={() => openProfile(m.id)} className="border-b border-primary/5 cursor-pointer hover:bg-primary/5">
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                            {m.full_name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("")}
+                          </div>
+                          <div>
+                            <p className="font-bold text-primary">{m.full_name}</p>
+                            <p className="text-[10px] text-primary/50">{m.employee_code}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4 text-primary/70">{m.designation || "—"}</td>
+                      <td className="py-2.5 px-4 text-primary/70">{m.department || "—"}</td>
+                      <td className="py-2.5 px-4"><StatusBadge status={m.today_status} size="sm" /></td>
+                      <td className="py-2.5 px-4 text-primary/70">{fmtTime(m.check_in)}</td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={5} className="py-6 text-center text-primary/40">No team members found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === "org-tree" && (
+        <div className="rounded-2xl bg-white border border-primary/10 shadow-sm p-4">
+          {orgError && <p className="text-sm text-red-600">{orgError}</p>}
+          {!orgTree && !orgError && <p className="text-sm text-primary/60">Loading organization…</p>}
+          {orgTree && Object.keys(orgTree).length === 0 && <p className="text-sm text-primary/40">No employees found.</p>}
+          {orgTree && Object.entries(orgTree).map(([deptName, members]) => (
+            <div key={deptName} className="border-b border-primary/5 last:border-0">
+              <button
+                onClick={() => setOpenDepts((p) => ({ ...p, [deptName]: !p[deptName] }))}
+                className="flex w-full items-center justify-between py-3 px-2 hover:bg-primary/5 rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <Building2 size={15} className="text-primary" />
+                  <span className="text-sm font-bold text-primary">{deptName}</span>
+                  <span className="text-[10px] text-primary/40">({members.length})</span>
+                </div>
+                {openDepts[deptName] ? <ChevronDown size={15} className="text-primary/50" /> : <ChevronRight size={15} className="text-primary/50" />}
+              </button>
+              {openDepts[deptName] && (
+                <div className="pb-2 pl-8 space-y-1">
+                  {members.map((m) => (
+                    <button key={m.id} onClick={() => openProfile(m.id)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs hover:bg-primary/5 text-left">
                       <div>
-                        <p className="font-bold text-primary">{m.full_name}</p>
-                        <p className="text-[10px] text-primary/50">{m.employee_code}</p>
+                        <p className="font-semibold text-primary">{m.full_name}</p>
+                        <p className="text-primary/50">{m.designation || "—"}</p>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-4 text-primary/70">{m.designation || "—"}</td>
-                  <td className="py-2.5 px-4 text-primary/70">{m.department || "—"}</td>
-                  <td className="py-2.5 px-4"><StatusBadge status={m.today_status} size="sm" /></td>
-                  <td className="py-2.5 px-4 text-primary/70">{fmtTime(m.check_in)}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={5} className="py-6 text-center text-primary/40">No team members found.</td></tr>
+                      <span className="text-[10px] text-primary/40">{m.manager_name ? `Reports to ${m.manager_name}` : "No manager"}</span>
+                    </button>
+                  ))}
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
       {profile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setProfile(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-extrabold text-primary">{profile.full_name}</h3>
               <button onClick={() => setProfile(null)}><X size={18} className="text-primary/50" /></button>
             </div>
-            <div className="space-y-1.5 text-xs text-primary/70">
-              <p><b className="text-primary">Code:</b> {profile.employee_code}</p>
-              <p><b className="text-primary">Email:</b> {profile.email}</p>
-              <p><b className="text-primary">Department:</b> {profile.department || "—"}</p>
-              <p><b className="text-primary">Designation:</b> {profile.designation || "—"}</p>
-              <p><b className="text-primary">Manager:</b> {profile.manager_name || "—"}</p>
-              <p><b className="text-primary">Joined:</b> {fmtDate(profile.joined_on)}</p>
-              <p><b className="text-primary">Status:</b> <span className="capitalize">{profile.status}</span></p>
+
+            <div className="flex gap-1 border-b border-primary/10 mb-3">
+              <button onClick={() => openProfileTab("overview")} className={`px-3 py-2 text-xs font-bold border-b-2 -mb-px ${profileTab === "overview" ? "border-primary text-primary" : "border-transparent text-primary/50"}`}>Overview</button>
+              <button onClick={() => openProfileTab("attendance")} className={`px-3 py-2 text-xs font-bold border-b-2 -mb-px ${profileTab === "attendance" ? "border-primary text-primary" : "border-transparent text-primary/50"}`}>Attendance</button>
             </div>
+
+            {profileTab === "overview" && (
+              <div className="space-y-1.5 text-xs text-primary/70">
+                <p><b className="text-primary">Code:</b> {profile.employee_code}</p>
+                <p><b className="text-primary">Email:</b> {profile.email}</p>
+                <p><b className="text-primary">Department:</b> {profile.department || "—"}</p>
+                <p><b className="text-primary">Designation:</b> {profile.designation || "—"}</p>
+                <p><b className="text-primary">Manager:</b> {profile.manager_name || "—"}</p>
+                <p><b className="text-primary">Joined:</b> {fmtDate(profile.joined_on)}</p>
+                <p><b className="text-primary">Status:</b> <span className="capitalize">{profile.status}</span></p>
+              </div>
+            )}
+
+            {profileTab === "attendance" && (
+              <div>
+                {profileAttError && <p className="text-xs text-red-600">{profileAttError}</p>}
+                {!profileAttendance && !profileAttError && <p className="text-xs text-primary/50">Loading…</p>}
+                {profileAttendance && profileAttendance.length === 0 && <p className="text-xs text-primary/40">No attendance records this month.</p>}
+                {profileAttendance && profileAttendance.length > 0 && (
+                  <div className="max-h-64 overflow-y-auto divide-y divide-primary/5">
+                    {profileAttendance.map((r) => (
+                      <div key={r.work_date} className="flex items-center justify-between py-2 text-xs">
+                        <span className="font-semibold text-primary">{fmtDate(r.work_date)}</span>
+                        <span className="text-primary/60">{fmtTime(r.check_in)} – {fmtTime(r.check_out)}</span>
+                        <StatusBadge status={r.status} size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
