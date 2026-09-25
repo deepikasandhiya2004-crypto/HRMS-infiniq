@@ -48,8 +48,15 @@ export default function WorkflowsConfig() {
     try {
       setLoading(true);
       const data = await hrmsService.getConfig("workflows");
-      setWorkflows(data || []);
-    } catch (err) {
+      setWorkflows(
+  Array.isArray(data)
+    ? data
+    : Array.isArray(data?.workflows)
+      ? data.workflows
+      : Array.isArray(data?.approvals)
+        ? data.approvals
+        : []
+); } catch (err) {
       console.error(err);
       toast.error("Failed to load workflow configurations");
     } finally {
@@ -74,7 +81,15 @@ export default function WorkflowsConfig() {
     if (!window.confirm("Reset workflows to system defaults?")) return;
     try {
       const resetData = await hrmsService.resetConfig("workflows");
-      setWorkflows(resetData);
+  setWorkflows(
+  Array.isArray(resetData)
+    ? resetData
+    : Array.isArray(resetData?.workflows)
+      ? resetData.workflows
+      : Array.isArray(resetData?.approvals)
+        ? resetData.approvals
+        : []
+);
       toast.info("Workflows reset to default sequences.");
     } catch (err) {
       toast.error("Failed to reset workflows");

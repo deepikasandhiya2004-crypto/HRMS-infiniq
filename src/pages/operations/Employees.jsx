@@ -223,11 +223,10 @@ export default function Employees() {
     return employees.filter((e) => {
       const q = search.toLowerCase();
       const matchesSearch =
-        e.name.toLowerCase().includes(q) ||
-        e.id.toLowerCase().includes(q) ||
-        e.designation.toLowerCase().includes(q) ||
-        (e.personal?.email && e.personal.email.toLowerCase().includes(q));
-
+  String(e.name ?? "").toLowerCase().includes(q) ||
+  String(e.id ?? "").toLowerCase().includes(q) ||
+  String(e.designation ?? "").toLowerCase().includes(q) ||
+  String(e.personal?.email ?? "").toLowerCase().includes(q);
       const matchesDept = !deptFilter || e.department === deptFilter;
       const matchesStatus = !statusFilter || e.status === statusFilter;
       const matchesType = !typeFilter || e.employmentType === typeFilter;

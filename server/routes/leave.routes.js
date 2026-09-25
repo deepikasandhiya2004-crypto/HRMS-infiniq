@@ -29,7 +29,7 @@ router.get('/calendar', getLeaveCalendar);
 
 // Reviewer / Manager & HR Endpoints
 const reviewers = requireRole(...REVIEWER_ROLES);
-router.get('/team', reviewers, getTeamLeaves);
+router.get('/team', getTeamLeaves);
 router.post('/:id/review', reviewers, reviewLeave);
 
 export default router;

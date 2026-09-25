@@ -84,11 +84,10 @@ export default function MyLeave() {
     return leaves.filter((l) => {
       const q = search.toLowerCase();
       const matchesSearch =
-        l.id.toLowerCase().includes(q) ||
-        l.leaveType.toLowerCase().includes(q) ||
-        (l.reason && l.reason.toLowerCase().includes(q)) ||
-        l.approver.toLowerCase().includes(q);
-
+      String(l.id ?? "").toLowerCase().includes(q) ||
+String(l.leaveType ?? "").toLowerCase().includes(q) ||
+String(l.reason ?? "").toLowerCase().includes(q) ||
+String(l.approver ?? "").toLowerCase().includes(q);
       const matchesStatus = !statusFilter || l.status.toLowerCase() === statusFilter.toLowerCase();
       const matchesType = !typeFilter || l.leaveType.toLowerCase() === typeFilter.toLowerCase();
       const matchesDate = !dateFilter || l.fromDate.includes(dateFilter) || l.toDate.includes(dateFilter);
@@ -248,7 +247,7 @@ export default function MyLeave() {
       {/* VIEW DETAILS MODAL */}
       {selectedLeave && (
         <Modal
-          isOpen={true}
+        open={true}
           title={`Leave Application: ${selectedLeave.id}`}
           onClose={() => setSelectedLeave(null)}
           size="lg"

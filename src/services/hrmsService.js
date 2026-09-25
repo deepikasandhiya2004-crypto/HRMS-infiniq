@@ -43,17 +43,48 @@ const mapEmployee = (employee) => ({
   ...employee,
   employeeId: employee.employee_id ?? employee.employeeId,
   name: employee.full_name ?? employee.name,
-  department: employee.department_name ?? employee.department,
-  designation: employee.designation_name ?? employee.designation,
+
+  department:
+    employee.department_name ??
+    employee.department ??
+    "",
+
+  designation:
+    employee.designation_name ??
+    employee.designation ??
+    "",
+
   reportingManager:
-    employee.reporting_manager_name ?? employee.reportingManager,
-  joiningDate: employee.joining_date ?? employee.joiningDate,
+    employee.manager_name ??
+    employee.reporting_manager_name ??
+    employee.reportingManager ??
+    "",
+
+  joiningDate:
+    employee.joined_on ??
+    employee.joining_date ??
+    employee.joiningDate ??
+    "",
+
   employmentType:
-    employee.employment_type ?? employee.employmentType,
-  personal: employee.personal ?? {},
+    employee.employment_type ??
+    employee.employmentType ??
+    "",
+
+  status:
+    employee.status === "active"
+      ? "Active"
+      : employee.status === "inactive"
+        ? "Inactive"
+        : employee.status ?? "",
+
+  personal: employee.personal ?? {
+    email: employee.email ?? "",
+    phone: employee.phone ?? "",
+  },
+
   emergency: employee.emergency ?? {},
 });
-
 const mapOnboarding = (item) => ({
   ...item,
   employeeName: item.employee_name ?? item.employeeName,
@@ -192,9 +223,58 @@ async getLeaveTypes() {
   },
 
   async createEmployee(payload) {
-    const response = await api.post("/operations/employees", payload);
-    return mapEmployee(response.data.employee);
-  },
+  const backendPayload = {
+    employee_code:
+      payload.employee_code?.trim() ||
+      payload.employeeCode?.trim() ||
+      `EMP-${Date.now()}`,
+
+    full_name:
+      payload.full_name?.trim() ||
+      payload.name?.trim(),
+
+    email:
+      payload.email?.trim().toLowerCase(),
+
+    role:
+      payload.role || "employee",
+
+    department:
+      payload.department || null,
+
+    designation:
+      payload.designation || null,
+
+    manager_id:
+      payload.manager_id ??
+      payload.managerId ??
+      null,
+
+    joined_on:
+      payload.joined_on ||
+      payload.joiningDate ||
+      null,
+
+    phone:
+      payload.phone?.trim() || null,
+  };
+
+  if (!backendPayload.full_name || !backendPayload.email) {
+    throw new Error("Name and email are required");
+  }
+
+  console.log(
+    "Creating employee:",
+    backendPayload
+  );
+
+  const response = await api.post(
+    "/operations/employees",
+    backendPayload
+  );
+
+  return mapEmployee(response.data.employee);
+},
 
   async updateEmployee(id, updates) {
     const response = await api.patch(

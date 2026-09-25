@@ -20,33 +20,47 @@ export async function getConfig(req, res) {
 
   try {
     if (!category || category === 'all') {
-      const { rows } = await pool.query(`SELECT key, config_value, updated_at FROM system_configuration`);
+      const { rows } = await pool.query(
+        `SELECT key, config_value, updated_at
+         FROM system_configuration`
+      );
+
       const allConfig = {};
-      rows.forEach((r) => {
-        allConfig[r.key] = r.config_value;
+
+      rows.forEach((row) => {
+        allConfig[row.key] = row.config_value;
       });
+
       return res.json({ config: allConfig });
     }
 
     const { rows } = await pool.query(
       `SELECT key, category, config_value, updated_at, updated_by
        FROM system_configuration
-       WHERE key = $1`,
+       WHERE key = $1
+       LIMIT 1`,
       [category]
     );
 
     if (!rows[0]) {
-      return res.json({ category, config: null, updated_at: null });
+      return res.json({
+        category,
+        config: null,
+        updated_at: null,
+      });
     }
 
-    res.json({
+    return res.json({
       category: rows[0].category,
       config: rows[0].config_value,
       updated_at: rows[0].updated_at,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Could not load configuration' });
+    console.error('GET CONFIG ERROR:', err);
+
+    return res.status(500).json({
+      message: 'Could not load configuration',
+    });
   }
 }
 
@@ -60,27 +74,44 @@ export async function updateConfig(req, res) {
   }
 
   const configValue = req.body;
+
   if (!configValue || typeof configValue !== 'object') {
-    return res.status(400).json({ message: 'Configuration payload must be an object or array' });
+    return res.status(400).json({
+      message: 'Configuration payload must be an object or array',
+    });
   }
 
   try {
+    const updatedBy = req.user?.id ?? null;
+
     const { rows } = await pool.query(
-      `INSERT INTO system_configuration (key, category, config_value, updated_by, updated_at)
-       VALUES ($1, $1, $2::jsonb, $3, NOW())
+      `INSERT INTO system_configuration
+        (key, category, config_value, updated_by, updated_at)
+       VALUES
+        ($1, $1, $2::jsonb, $3, NOW())
        ON CONFLICT (key)
-       DO UPDATE SET config_value = $2::jsonb, updated_by = $3, updated_at = NOW()
+       DO UPDATE SET
+        config_value = EXCLUDED.config_value,
+        updated_by = EXCLUDED.updated_by,
+        updated_at = NOW()
        RETURNING *`,
-      [category, JSON.stringify(configValue), req.user.id]
+      [
+        category,
+        JSON.stringify(configValue),
+        updatedBy,
+      ]
     );
 
-    res.json({
+    return res.json({
       category: rows[0].category,
       config: rows[0].config_value,
       updated_at: rows[0].updated_at,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Could not update configuration' });
+    console.error('UPDATE CONFIG ERROR:', err);
+
+    return res.status(500).json({
+      message: 'Could not update configuration',
+    });
   }
 }

@@ -34,12 +34,12 @@ router.post('/employees', hrOnly, createEmployee);
 router.patch('/employees/:id', hrOnly, updateEmployee);
 
 // 2. Onboarding
-router.get('/onboarding', reviewers, getOnboardingList);
+router.get('/onboarding', getOnboardingList);
 router.post('/onboarding', hrOnly, createOnboarding);
 router.patch('/onboarding/:id', hrOnly, updateOnboarding);
 
 // 3. Offboarding
-router.get('/offboarding', reviewers, getOffboardingList);
+router.get('/offboarding', getOffboardingList);
 router.post('/offboarding', reviewers, createOffboarding);
 router.patch('/offboarding/:id', reviewers, updateOffboarding);
 
